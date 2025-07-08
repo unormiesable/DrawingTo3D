@@ -32,7 +32,6 @@ function App() {
     
     pathsRef.current.forEach(stroke => {
       if (stroke.path.length < 2) return;
-
       context.strokeStyle = stroke.color;
       context.lineWidth = stroke.brushSize;
 
@@ -63,7 +62,6 @@ function App() {
 
   const handleMouseDown = (event) => {
     if (mode === 'fill') {
-
       fill(event, fillColor);
     } else if (mode === 'erasing') {
       const somethingErased = erase(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
@@ -92,7 +90,6 @@ function App() {
 
   const handleFixClick = () => {
     const originalPaths = pathsRef.current;
-
     const fixedPaths = fixDrawing(originalPaths, brushSize, strokeColor);
 
     if (fixedPaths === originalPaths) {
@@ -103,12 +100,15 @@ function App() {
     redrawAllPaths();
   };
 
-  const cycleMode = () => {
-    setMode(prev => {
-      if (prev === 'drawing') return 'erasing';
-      if (prev === 'erasing') return 'fill';
-      return 'drawing';
-    });
+  const buttonBaseStyle = {
+    padding: '0.8rem 1rem',
+    border: 'none',
+    color: 'white',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    flex: 1,
+    margin: '0 0.25rem',
+    borderRadius: '4px'
   };
 
   return (
@@ -123,8 +123,9 @@ function App() {
         width={window.innerWidth * 0.8}
         height={window.innerHeight * 0.7}
       />
-      {/* <<< 6. Tambahkan UI untuk pemilih warna */}
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '80%', marginTop: '1rem' }}>
+
+
         <div style={{ display: 'flex', alignItems: 'center' }}>
             <label htmlFor="strokeColor" style={{ marginRight: '1rem' }}>Warna Garis:</label>
             <input
@@ -132,8 +133,10 @@ function App() {
               id="strokeColor"
               value={strokeColor}
               onChange={(e) => setStrokeColor(e.target.value)}
+              style={{ marginRight: '1rem' }}
             />
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center' }}>
             <label htmlFor="fillColor" style={{ marginRight: '1rem' }}>Warna Isi:</label>
             <input
@@ -141,8 +144,10 @@ function App() {
               id="fillColor"
               value={fillColor}
               onChange={(e) => setFillColor(e.target.value)}
+              style={{ marginRight: '1rem' }}
             />
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', flexGrow: 1, marginLeft: '2rem' }}>
             <label htmlFor="brushSize" style={{ marginRight: '1rem' }}>Ukuran Kuas:</label>
             <input
@@ -158,53 +163,64 @@ function App() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', width: '80%', justifyContent: 'center' }}>
+
+      <div style={{ display: 'flex', width: '80%', justifyContent: 'center', marginTop: '1rem' }}>
         <button
           style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            backgroundColor: 'orange',
-            width: '100%',
-            border: 'none',
-            color: 'white',
-            fontSize: '1rem',
-            cursor: 'pointer'
+            ...buttonBaseStyle,
+            backgroundColor: mode === 'drawing' ? '#3498db' : '#555',
           }}
-          onClick={cycleMode}
+          onClick={() => setMode('drawing')}
         >
-          MODE: {mode.toUpperCase()}
-        </button>
-        
-        <button
-          style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            backgroundColor: 'grey',
-            width: '100%',
-            border: 'none',
-            color: 'white',
-            fontSize: '1rem',
-            cursor: 'pointer'
-          }}
-          onClick={handleCheckClick}
-        >
-          CHECK
+          Gambar (Draw)
         </button>
 
         <button
           style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            backgroundColor: 'darkblue',
+            ...buttonBaseStyle,
+            backgroundColor: mode === 'erasing' ? '#e74c3c' : '#555',
+          }}
+          onClick={() => setMode('erasing')}
+        >
+          Hapus (Erase)
+        </button>
+
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: mode === 'fill' ? '#2ecc71' : '#555',
+          }}
+          onClick={() => setMode('fill')}
+        >
+          Warnai (Fill)
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', width: '80%', justifyContent: 'center', marginTop: '1rem' }}>
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: 'lightgreen',
+            color: 'black',
             width: '100%',
-            border: 'none',
-            color: 'white',
-            fontSize: '1rem',
-            cursor: 'pointer'
+            margin: '0.5rem 0'
+          }}
+          onClick={handleCheckClick}
+        >
+          Cek (Open/Close)
+        </button>
+
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: 'lightblue',
+            color: 'black',
+            width: '100%',
+            margin: '0.5rem 0'
           }}
           onClick={handleFixClick}
         >
-          PERBAIKI
+          Perbaiki (Open to Close)
         </button>
       </div>
     </div>

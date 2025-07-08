@@ -54,7 +54,7 @@ const isPointInsidePolygon = (point, polygonSegments) => {
 
 export const analyzeShapes = (allStrokes) => {
     if (allStrokes.length === 0) {
-        console.log("Kanvas Masih Kosong");
+        console.log("Canvas Masih Kosong");
         return;
     }
     const { points, adj } = buildGraph(allStrokes);
