@@ -171,7 +171,7 @@ function App() {
           width={window.innerWidth * 0.8}
           height={window.innerHeight * 0.7}
         />
-        {/* BARU: Elemen kursor palsu */}
+        
         <div style={getFakeCursorStyle()} />
       </div>
 
