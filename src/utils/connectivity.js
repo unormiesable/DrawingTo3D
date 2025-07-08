@@ -246,4 +246,34 @@ export const fixDrawing = (allStrokes, currentBrushSize, currentStrokeColor) => 
 
     console.log("Perbaikan diterapkan pada bentuk terbuka yang valid.");
     return finalStrokes;
+    
 };
+
+export const calculateCentroid = (allStrokes) => {
+    let totalX = 0;
+    let totalY = 0;
+    let pointCount = 0;
+  
+    if (!allStrokes || allStrokes.length === 0) {
+      console.log("Tidak ada gambar untuk dianalisis.");
+      return null;
+    }
+  
+    allStrokes.forEach(stroke => {
+      stroke.path.forEach(point => {
+        totalX += point.x;
+        totalY += point.y;
+        pointCount++;
+      });
+    });
+  
+    if (pointCount === 0) {
+      console.log("Gambar tidak memiliki titik.");
+      return null;
+    }
+  
+    return {
+      x: totalX / pointCount,
+      y: totalY / pointCount,
+    };
+  };
