@@ -5,6 +5,9 @@ import {
   fixDrawing,
   calculateCentroid,
   findCentroidsOfShapes,
+  applyGlobalGradientFill,
+  applyGradientFillToShapes,
+  applyEdgeGradientFill,
 } from "./utils/connectivity";
 
 function App() {
@@ -12,6 +15,10 @@ function App() {
   const [brushSize, setBrushSize] = useState(10);
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [fillColor, setFillColor] = useState("#0000FF");
+
+  const [gradientThreshold, setGradientThreshold] = useState(1.0);
+  const [gradientMin, setGradientMin] = useState(0.0);
+  const [gradientMax, setGradientMax] = useState(1.0);
 
   const [cursorPosition, setCursorPosition] = useState({ x: -100, y: -100 });
   const [isCursorOverCanvas, setIsCursorOverCanvas] = useState(false);
@@ -134,11 +141,6 @@ function App() {
       context.lineWidth = 2;
       context.arc(centroid.x, centroid.y, 10, 0, 2 * Math.PI);
       context.stroke();
-      console.log(
-        `Titik tengah ditemukan di: (${centroid.x.toFixed(
-          2
-        )}, ${centroid.y.toFixed(2)})`
-      );
     } else {
       alert("Gambar terlebih dahulu untuk menentukan titik tengah.");
     }
@@ -160,11 +162,48 @@ function App() {
         context.arc(centroid.x, centroid.y, 8, 0, 2 * Math.PI);
         context.stroke();
       });
-      console.log(
-        `Ditemukan ${centroids.length} bentuk dan titik tengahnya masing-masing.`
-      );
     } else {
       alert("Tidak ada bentuk yang dapat dianalisis.");
+    }
+  };
+
+  const handleApplyGlobalGradient = () => {
+    if (paths.length > 0) {
+      applyGlobalGradientFill(
+        canvasRef.current,
+        paths,
+        gradientMin,
+        gradientMax
+      );
+    } else {
+      alert("Tidak ada gambar untuk diberi gradien.");
+    }
+  };
+
+  const handleApplyShapeGradient = () => {
+    if (paths.length > 0) {
+      applyGradientFillToShapes(
+        canvasRef.current,
+        paths,
+        gradientMin,
+        gradientMax
+      );
+    } else {
+      alert("Tidak ada gambar untuk diberi gradien.");
+    }
+  };
+
+  const handleApplyEdgeGradient = () => {
+    if (paths.length > 0) {
+      applyEdgeGradientFill(
+        canvasRef.current,
+        paths,
+        gradientThreshold,
+        gradientMin,
+        gradientMax
+      );
+    } else {
+      alert("Tidak ada gambar untuk diberi gradien.");
     }
   };
 
@@ -450,6 +489,137 @@ function App() {
         >
           Tentukan Titik Tengah (Per Bentuk)
         </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          width: "80%",
+          justifyContent: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: "#2c3e50",
+            color: "white",
+          }}
+          onClick={handleApplyGlobalGradient}
+        >
+          Gradient Fill (Dari Pusat Global)
+        </button>
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: "#8e44ad",
+            color: "white",
+          }}
+          onClick={handleApplyShapeGradient}
+        >
+          Gradient Fill (Dari Pusat Bentuk)
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "80%",
+          justifyContent: "center",
+          alignItems: "center",
+          marginTop: "1rem",
+          padding: "1rem",
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+        }}
+      >
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: "#d35400",
+            color: "white",
+            width: "100%",
+          }}
+          onClick={handleApplyEdgeGradient}
+        >
+          Gradient Fill Dari Garis Tepi
+        </button>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            marginTop: "1rem",
+          }}
+        >
+          <label htmlFor="threshold" style={{ marginRight: "1rem" }}>
+            Threshold:
+          </label>
+          <input
+            type="range"
+            id="threshold"
+            min="0.01"
+            max="1.0"
+            step="0.01"
+            value={gradientThreshold}
+            onChange={(e) => setGradientThreshold(parseFloat(e.target.value))}
+            style={{ flexGrow: 1 }}
+          />
+          <span style={{ marginLeft: "1rem", width: "40px" }}>
+            {gradientThreshold.toFixed(2)}
+          </span>
+        </div>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            marginTop: "0.5rem",
+          }}
+        >
+          <label htmlFor="gradientMin" style={{ marginRight: "1rem" }}>
+            Min:
+          </label>
+          <input
+            type="range"
+            id="gradientMin"
+            min="0.0"
+            max="1.0"
+            step="0.01"
+            value={gradientMin}
+            onChange={(e) => setGradientMin(parseFloat(e.target.value))}
+            style={{ flexGrow: 1 }}
+          />
+          <span style={{ marginLeft: "1rem", width: "40px" }}>
+            {gradientMin.toFixed(2)}
+          </span>
+        </div>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            marginTop: "0.5rem",
+          }}
+        >
+          <label htmlFor="gradientMax" style={{ marginRight: "1rem" }}>
+            Max:
+          </label>
+          <input
+            type="range"
+            id="gradientMax"
+            min="0.0"
+            max="1.0"
+            step="0.01"
+            value={gradientMax}
+            onChange={(e) => setGradientMax(parseFloat(e.target.value))}
+            style={{ flexGrow: 1 }}
+          />
+          <span style={{ marginLeft: "1rem", width: "40px" }}>
+            {gradientMax.toFixed(2)}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -276,7 +276,6 @@ export const calculateCentroid = (allStrokes) => {
   let pointCount = 0;
 
   if (!allStrokes || allStrokes.length === 0) {
-    console.log("Tidak ada gambar untuk dianalisis.");
     return null;
   }
 
@@ -289,7 +288,6 @@ export const calculateCentroid = (allStrokes) => {
   });
 
   if (pointCount === 0) {
-    console.log("Gambar tidak memiliki titik.");
     return null;
   }
 
@@ -301,7 +299,6 @@ export const calculateCentroid = (allStrokes) => {
 
 export const findCentroidsOfShapes = (allStrokes) => {
   if (!allStrokes || allStrokes.length === 0) {
-    console.log("Tidak ada gambar untuk dianalisis.");
     return [];
   }
 
@@ -349,4 +346,300 @@ export const findCentroidsOfShapes = (allStrokes) => {
   }
 
   return allCentroids;
+};
+
+function pointToSegmentDistance(p, a, b) {
+  const l2 = Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+  if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+
+  let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+
+  const projection = {
+    x: a.x + t * (b.x - a.x),
+    y: a.y + t * (b.y - a.y),
+  };
+
+  return Math.hypot(p.x - projection.x, p.y - projection.y);
+}
+
+export const applyGlobalGradientFill = (canvas, allStrokes, min, max) => {
+  if (!canvas || !allStrokes || allStrokes.length === 0) return;
+
+  const context = canvas.getContext("2d");
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  const allPoints = allStrokes.flatMap((s) => s.path);
+  if (allPoints.length === 0) return;
+
+  const segments = [];
+  allStrokes.forEach((stroke) => {
+    for (let i = 0; i < stroke.path.length - 1; i++) {
+      segments.push({ p1: stroke.path[i], p2: stroke.path[i + 1] });
+    }
+  });
+
+  const centroid = calculateCentroid(allStrokes);
+  if (!centroid) return;
+
+  const boundingBox = {
+    minX: Math.min(...allPoints.map((p) => p.x)),
+    minY: Math.min(...allPoints.map((p) => p.y)),
+    maxX: Math.max(...allPoints.map((p) => p.x)),
+    maxY: Math.max(...allPoints.map((p) => p.y)),
+  };
+
+  for (
+    let y = Math.floor(boundingBox.minY);
+    y < Math.ceil(boundingBox.maxY);
+    y++
+  ) {
+    for (
+      let x = Math.floor(boundingBox.minX);
+      x < Math.ceil(boundingBox.maxX);
+      x++
+    ) {
+      const currentPoint = { x, y };
+      if (isPointInsidePolygon(currentPoint, segments)) {
+        const distToCenter = Math.hypot(x - centroid.x, y - centroid.y);
+        let distToEdge = Infinity;
+        for (const seg of segments) {
+          distToEdge = Math.min(
+            distToEdge,
+            pointToSegmentDistance(currentPoint, seg.p1, seg.p2)
+          );
+        }
+
+        const denominator = distToCenter + distToEdge;
+        if (denominator === 0) continue;
+
+        const colorPosition = distToEdge / denominator;
+        const finalColorValue = min + (max - min) * colorPosition;
+        const gray = Math.round(finalColorValue * 255);
+
+        const index = (y * canvas.width + x) * 4;
+        data[index] = gray;
+        data[index + 1] = gray;
+        data[index + 2] = gray;
+        data[index + 3] = 255;
+      }
+    }
+  }
+  context.putImageData(imageData, 0, 0);
+};
+
+export const applyGradientFillToShapes = (canvas, allStrokes, min, max) => {
+  if (!canvas || !allStrokes || allStrokes.length === 0) return;
+
+  const context = canvas.getContext("2d");
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  const { points, adj } = buildGraph(allStrokes);
+  if (points.length < 2) return;
+
+  const visited = new Set();
+  for (let i = 0; i < points.length; i++) {
+    if (!visited.has(i)) {
+      const componentPointIndices = [];
+      const stack = [i];
+      visited.add(i);
+      while (stack.length > 0) {
+        const nodeIndex = stack.pop();
+        componentPointIndices.push(nodeIndex);
+        adj[nodeIndex].forEach((neighbor) => {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor);
+            stack.push(neighbor);
+          }
+        });
+      }
+
+      if (componentPointIndices.length > 0) {
+        const shapePoints = componentPointIndices.map((index) => points[index]);
+        const shapePointsSet = new Set(shapePoints.map((p) => `${p.x},${p.y}`));
+        const shapeStrokes = allStrokes.filter((stroke) =>
+          stroke.path.some((p) => shapePointsSet.has(`${p.x},${p.y}`))
+        );
+
+        if (shapeStrokes.length === 0) continue;
+
+        const endpoints = componentPointIndices.filter(
+          (pIndex) => adj[pIndex].size === 1
+        ).length;
+        if (endpoints !== 0) continue;
+
+        const segments = [];
+        shapeStrokes.forEach((stroke) => {
+          for (let j = 0; j < stroke.path.length - 1; j++) {
+            segments.push({ p1: stroke.path[j], p2: stroke.path[j + 1] });
+          }
+        });
+
+        const shapeCentroid = {
+          x: shapePoints.reduce((acc, p) => acc + p.x, 0) / shapePoints.length,
+          y: shapePoints.reduce((acc, p) => acc + p.y, 0) / shapePoints.length,
+        };
+
+        const boundingBox = {
+          minX: Math.min(...shapePoints.map((p) => p.x)),
+          minY: Math.min(...shapePoints.map((p) => p.y)),
+          maxX: Math.max(...shapePoints.map((p) => p.x)),
+          maxY: Math.max(...shapePoints.map((p) => p.y)),
+        };
+
+        for (
+          let y = Math.floor(boundingBox.minY);
+          y < Math.ceil(boundingBox.maxY);
+          y++
+        ) {
+          for (
+            let x = Math.floor(boundingBox.minX);
+            x < Math.ceil(boundingBox.maxX);
+            x++
+          ) {
+            const currentPoint = { x, y };
+            if (isPointInsidePolygon(currentPoint, segments)) {
+              const distToCenter = Math.hypot(
+                x - shapeCentroid.x,
+                y - shapeCentroid.y
+              );
+              let distToEdge = Infinity;
+              for (const seg of segments) {
+                distToEdge = Math.min(
+                  distToEdge,
+                  pointToSegmentDistance(currentPoint, seg.p1, seg.p2)
+                );
+              }
+
+              const denominator = distToCenter + distToEdge;
+              if (denominator === 0) continue;
+
+              const colorPosition = distToEdge / denominator;
+              const finalColorValue = min + (max - min) * colorPosition;
+              const gray = Math.round(finalColorValue * 255);
+
+              const index = (y * canvas.width + x) * 4;
+              data[index] = gray;
+              data[index + 1] = gray;
+              data[index + 2] = gray;
+              data[index + 3] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+  context.putImageData(imageData, 0, 0);
+};
+
+export const applyEdgeGradientFill = (
+  canvas,
+  allStrokes,
+  threshold,
+  min,
+  max
+) => {
+  if (!canvas || !allStrokes || allStrokes.length === 0) return;
+
+  const context = canvas.getContext("2d");
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  const { points, adj } = buildGraph(allStrokes);
+  if (points.length < 2) return;
+
+  const visited = new Set();
+  for (let i = 0; i < points.length; i++) {
+    if (!visited.has(i)) {
+      const componentPointIndices = [];
+      const stack = [i];
+      visited.add(i);
+      while (stack.length > 0) {
+        const nodeIndex = stack.pop();
+        componentPointIndices.push(nodeIndex);
+        adj[nodeIndex].forEach((neighbor) => {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor);
+            stack.push(neighbor);
+          }
+        });
+      }
+
+      if (componentPointIndices.length > 0) {
+        const shapePoints = componentPointIndices.map((index) => points[index]);
+        const shapePointsSet = new Set(shapePoints.map((p) => `${p.x},${p.y}`));
+        const shapeStrokes = allStrokes.filter((stroke) =>
+          stroke.path.some((p) => shapePointsSet.has(`${p.x},${p.y}`))
+        );
+
+        if (shapeStrokes.length === 0) continue;
+
+        const endpoints = componentPointIndices.filter(
+          (pIndex) => adj[pIndex].size === 1
+        ).length;
+        if (endpoints !== 0) continue;
+
+        const segments = [];
+        shapeStrokes.forEach((stroke) => {
+          for (let j = 0; j < stroke.path.length - 1; j++) {
+            segments.push({ p1: stroke.path[j], p2: stroke.path[j + 1] });
+          }
+        });
+
+        const boundingBox = {
+          minX: Math.min(...shapePoints.map((p) => p.x)),
+          minY: Math.min(...shapePoints.map((p) => p.y)),
+          maxX: Math.max(...shapePoints.map((p) => p.x)),
+          maxY: Math.max(...shapePoints.map((p) => p.y)),
+        };
+
+        let maxDistFromEdge = 0;
+        const pixelsInside = [];
+        for (
+          let y = Math.floor(boundingBox.minY);
+          y < Math.ceil(boundingBox.maxY);
+          y++
+        ) {
+          for (
+            let x = Math.floor(boundingBox.minX);
+            x < Math.ceil(boundingBox.maxX);
+            x++
+          ) {
+            const currentPoint = { x, y };
+            if (isPointInsidePolygon(currentPoint, segments)) {
+              let distToEdge = Infinity;
+              for (const seg of segments) {
+                distToEdge = Math.min(
+                  distToEdge,
+                  pointToSegmentDistance(currentPoint, seg.p1, seg.p2)
+                );
+              }
+              pixelsInside.push({ point: currentPoint, distToEdge });
+              if (distToEdge > maxDistFromEdge) {
+                maxDistFromEdge = distToEdge;
+              }
+            }
+          }
+        }
+
+        if (maxDistFromEdge === 0) continue;
+
+        pixelsInside.forEach(({ point, distToEdge }) => {
+          const normalizedDist = distToEdge / maxDistFromEdge;
+          const colorPosition = Math.min(1.0, normalizedDist / threshold);
+          const finalColorValue = min + (max - min) * colorPosition;
+          const gray = Math.round(finalColorValue * 255);
+
+          const index = (point.y * canvas.width + point.x) * 4;
+          data[index] = gray;
+          data[index + 1] = gray;
+          data[index + 2] = gray;
+          data[index + 3] = 255;
+        });
+      }
+    }
+  }
+  context.putImageData(imageData, 0, 0);
 };
