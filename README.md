@@ -1,5 +1,7 @@
 # FISH DRAWING TO 3D
-well for now it's just simple drawing app, you still can't do stuff for now.
+### TO DO
+- Mengimplementasikan fitur sesuai dengan perancangan awal
+- Membuat desain user interface yang mudah untuk digunakan
 
 ## FITUR YANG SUDAH ADA
 <pre>
