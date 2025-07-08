@@ -4,9 +4,10 @@ import { analyzeShapes, fixDrawing } from './utils/connectivity';
 
 function App() {
   const [mode, setMode] = useState('drawing');
-  const [brushSize, setBrushSize] = useState(2);
+  const [brushSize, setBrushSize] = useState(10);
   const [strokeColor, setStrokeColor] = useState('#000000');
   const [fillColor, setFillColor] = useState('#0000FF');
+  const [cursorStyle, setCursorStyle] = useState('default');
 
   const {
     canvasRef,
@@ -47,6 +48,25 @@ function App() {
   useEffect(() => {
     setupCanvas();
   }, [setupCanvas]);
+
+  useEffect(() => {
+    if (mode === 'drawing') {
+      const size = brushSize;
+      const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><circle cx="${size / 2}" cy="${size / 2}" r="${(size / 2) - 1}" stroke="black" stroke-width="1" fill="none"/></svg>`;
+      const cursorUrl = `url('data:image/svg+xml;base64,${btoa(svg)}') ${size / 2} ${size / 2}, auto`;
+      setCursorStyle(cursorUrl);
+    } else if (mode === 'erasing') {
+      const eraseSize = 30;
+      const svg = `<svg width="${eraseSize}" height="${eraseSize}" xmlns="http://www.w3.org/2000/svg"><circle cx="${eraseSize / 2}" cy="${eraseSize / 2}" r="${(eraseSize / 2) - 1}" stroke="black" stroke-width="1" fill="none"/></svg>`;
+      const cursorUrl = `url('data:image/svg+xml;base64,${btoa(svg)}') ${eraseSize / 2} ${eraseSize / 2}, auto`;
+      setCursorStyle(cursorUrl);
+    } else if (mode === 'fill') {
+      setCursorStyle('crosshair');
+    } else {
+      setCursorStyle('default');
+    }
+  }, [mode, brushSize]);
+
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -115,7 +135,7 @@ function App() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       <h1>Gambar Ikan</h1>
       <canvas
-        style={{ border: '2px solid black', borderRadius: '8px', cursor: mode === 'fill' ? 'crosshair' : 'default' }}
+        style={{ border: '2px solid black', borderRadius: '8px', cursor: cursorStyle }}
         ref={canvasRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
