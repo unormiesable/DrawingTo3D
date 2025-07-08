@@ -4,6 +4,7 @@ import {
   analyzeShapes,
   fixDrawing,
   calculateCentroid,
+  findCentroidsOfShapes,
 } from "./utils/connectivity";
 
 function App() {
@@ -20,10 +21,15 @@ function App() {
     setupCanvas,
     finishDrawing,
     draw,
-    pathsRef,
+    paths,
+    setPaths,
     startDrawing,
     fill,
     erase,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useDrawing(mode, brushSize, strokeColor);
 
   const redrawAllPaths = useCallback(() => {
@@ -37,10 +43,11 @@ function App() {
     context.lineCap = "round";
     context.lineJoin = "round";
 
-    pathsRef.current.forEach((stroke) => {
+    paths.forEach((stroke) => {
       if (stroke.path.length < 2) return;
       context.strokeStyle = stroke.color;
       context.lineWidth = stroke.brushSize;
+
       context.beginPath();
       context.moveTo(stroke.path[0].x, stroke.path[0].y);
       for (let i = 1; i < stroke.path.length; i++) {
@@ -48,14 +55,19 @@ function App() {
       }
       context.stroke();
     });
-  }, [canvasRef, pathsRef]);
+  }, [canvasRef, paths]);
+
+  useEffect(() => {
+    redrawAllPaths();
+  }, [paths, redrawAllPaths]);
+
   useEffect(() => {
     setupCanvas();
   }, [setupCanvas]);
 
   useEffect(() => {
     const handleMouseUp = () => {
-      if (mode !== "fill") {
+      if (mode === "drawing") {
         finishDrawing();
       }
     };
@@ -69,13 +81,7 @@ function App() {
     if (mode === "fill") {
       fill(event, fillColor);
     } else if (mode === "erasing") {
-      const somethingErased = erase(
-        event.nativeEvent.offsetX,
-        event.nativeEvent.offsetY
-      );
-      if (somethingErased) {
-        redrawAllPaths();
-      }
+      erase(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
     } else {
       startDrawing(event);
     }
@@ -88,37 +94,25 @@ function App() {
     });
 
     if (mode === "erasing" && event.buttons === 1) {
-      const somethingErased = erase(
-        event.nativeEvent.offsetX,
-        event.nativeEvent.offsetY
-      );
-      if (somethingErased) {
-        redrawAllPaths();
-      }
+      erase(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
     } else if (mode === "drawing") {
       draw(event);
     }
   };
 
   const handleCheckClick = () => {
-    analyzeShapes(pathsRef.current);
+    analyzeShapes(paths);
   };
 
   const handleFixClick = () => {
-    const originalPaths = pathsRef.current;
-    const fixedPaths = fixDrawing(originalPaths, brushSize, strokeColor);
-
-    if (fixedPaths === originalPaths) {
-      return;
+    const fixedPaths = fixDrawing(paths, brushSize, strokeColor);
+    if (fixedPaths !== paths) {
+      setPaths(fixedPaths);
     }
-
-    pathsRef.current = fixedPaths;
-    redrawAllPaths();
   };
 
   const handleClearCanvas = () => {
-    pathsRef.current = [];
-    redrawAllPaths();
+    setPaths([]);
   };
 
   const handleClearFill = () => {
@@ -127,31 +121,50 @@ function App() {
 
   const handleFindCenterClick = () => {
     redrawAllPaths();
-
-    const centroid = calculateCentroid(pathsRef.current);
-
+    const centroid = calculateCentroid(paths);
     if (centroid) {
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d");
-
       context.beginPath();
       context.fillStyle = "#FF0000";
       context.arc(centroid.x, centroid.y, 10, 0, 2 * Math.PI);
       context.fill();
-
       context.beginPath();
       context.strokeStyle = "#FFFFFF";
       context.lineWidth = 2;
       context.arc(centroid.x, centroid.y, 10, 0, 2 * Math.PI);
       context.stroke();
-
       console.log(
         `Titik tengah ditemukan di: (${centroid.x.toFixed(
           2
         )}, ${centroid.y.toFixed(2)})`
       );
     } else {
-      console.log("Gambar terlebih dahulu untuk menentukan titik tengah.");
+      alert("Gambar terlebih dahulu untuk menentukan titik tengah.");
+    }
+  };
+
+  const handleFindCenterOfShapesClick = () => {
+    redrawAllPaths();
+    const centroids = findCentroidsOfShapes(paths);
+    if (centroids.length > 0) {
+      const context = canvasRef.current.getContext("2d");
+      centroids.forEach((centroid) => {
+        context.beginPath();
+        context.fillStyle = "#3498db";
+        context.arc(centroid.x, centroid.y, 8, 0, 2 * Math.PI);
+        context.fill();
+        context.beginPath();
+        context.strokeStyle = "#FFFFFF";
+        context.lineWidth = 2;
+        context.arc(centroid.x, centroid.y, 8, 0, 2 * Math.PI);
+        context.stroke();
+      });
+      console.log(
+        `Ditemukan ${centroids.length} bentuk dan titik tengahnya masing-masing.`
+      );
+    } else {
+      alert("Tidak ada bentuk yang dapat dianalisis.");
     }
   };
 
@@ -164,6 +177,12 @@ function App() {
     flex: 1,
     margin: "0 0.25rem",
     borderRadius: "4px",
+  };
+
+  const disabledButtonStyle = {
+    ...buttonBaseStyle,
+    backgroundColor: "#95a5a6",
+    cursor: "not-allowed",
   };
 
   const getFakeCursorStyle = () => {
@@ -221,7 +240,6 @@ function App() {
           width={window.innerWidth * 0.8}
           height={window.innerHeight * 0.7}
         />
-
         <div style={getFakeCursorStyle()} />
       </div>
 
@@ -245,7 +263,6 @@ function App() {
             style={{ marginRight: "1rem" }}
           />
         </div>
-
         <div style={{ display: "flex", alignItems: "center" }}>
           <label htmlFor="fillColor" style={{ marginRight: "1rem" }}>
             Warna Isi:
@@ -258,7 +275,6 @@ function App() {
             style={{ marginRight: "1rem" }}
           />
         </div>
-
         <div
           style={{
             display: "flex",
@@ -281,6 +297,38 @@ function App() {
           />
           <span style={{ marginLeft: "1rem", width: "30px" }}>{brushSize}</span>
         </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          width: "80%",
+          justifyContent: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <button
+          style={
+            canUndo
+              ? { ...buttonBaseStyle, backgroundColor: "#f39c12" }
+              : disabledButtonStyle
+          }
+          onClick={undo}
+          disabled={!canUndo}
+        >
+          Undo
+        </button>
+        <button
+          style={
+            canRedo
+              ? { ...buttonBaseStyle, backgroundColor: "#f1c40f" }
+              : disabledButtonStyle
+          }
+          onClick={redo}
+          disabled={!canRedo}
+        >
+          Redo
+        </button>
       </div>
 
       <div
@@ -372,9 +420,16 @@ function App() {
         </button>
       </div>
 
-      <p>DEBUG MENU :</p>
+      <p>DEBUGER</p>
 
-      <div style={{ display: "flex", width: "80%", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          width: "80%",
+          justifyContent: "center",
+          marginTop: "0rem",
+        }}
+      >
         <button
           style={{
             ...buttonBaseStyle,
@@ -383,7 +438,17 @@ function App() {
           }}
           onClick={handleFindCenterClick}
         >
-          Tentukan Titik Tengah
+          Tentukan Titik Tengah (Semua)
+        </button>
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: "#16a085",
+            color: "white",
+          }}
+          onClick={handleFindCenterOfShapesClick}
+        >
+          Tentukan Titik Tengah (Per Bentuk)
         </button>
       </div>
     </div>
