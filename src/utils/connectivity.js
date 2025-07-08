@@ -1,3 +1,22 @@
+const subdivideLine = (p1, p2) => {
+    const newPath = [p1];
+    const distance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const numSegments = Math.max(1, Math.floor(distance / 5));
+
+    for (let i = 1; i <= numSegments; i++) {
+        const t = i / numSegments;
+        const x = p1.x + t * (p2.x - p1.x);
+        const y = p1.y + t * (p2.y - p1.y);
+        newPath.push({ x, y });
+    }
+    
+    if (numSegments > 0) {
+        newPath.push(p2);
+    }
+
+    return newPath;
+};
+
 const buildGraph = (allStrokes) => {
     const points = [];
     const tolerance = 1;
@@ -209,8 +228,10 @@ export const fixDrawing = (allStrokes, currentBrushSize, currentStrokeColor) => 
         
         if (shouldFix) {
             const [start, end] = component.endpoints;
+            const newPath = subdivideLine(points[start], points[end]);
+            
             finalStrokes.push({
-                path: [points[start], points[end]],
+                path: newPath,
                 brushSize: currentBrushSize,
                 color: currentStrokeColor
             });
