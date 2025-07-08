@@ -530,10 +530,11 @@ function App() {
           alignItems: "center",
           marginTop: "1rem",
           padding: "1rem",
-          border: "1px solid #ccc",
-          borderRadius: "8px",
+          scale: "0.9",
+          backgroundColor: "darkred",
         }}
       >
+        
         <button
           style={{
             ...buttonBaseStyle,
@@ -570,6 +571,8 @@ function App() {
             {gradientThreshold.toFixed(2)}
           </span>
         </div>
+
+        
         <div
           style={{
             width: "100%",
