@@ -17,7 +17,8 @@ const subdivideLine = (p1, p2) => {
   return newPath;
 };
 
-const buildGraph = (allStrokes) => {
+// DIUBAH: Menambahkan 'export'
+export const buildGraph = (allStrokes) => {
   const points = [];
   const tolerance = 1;
 
@@ -51,7 +52,8 @@ const buildGraph = (allStrokes) => {
   return { points, adj };
 };
 
-const isPointInsidePolygon = (point, polygonSegments) => {
+// DIUBAH: Menambahkan 'export'
+export const isPointInsidePolygon = (point, polygonSegments) => {
   let intersections = 0;
   const px = point.x;
   const py = point.y;
@@ -348,7 +350,8 @@ export const findCentroidsOfShapes = (allStrokes) => {
   return allCentroids;
 };
 
-function pointToSegmentDistance(p, a, b) {
+// DIUBAH: Menambahkan 'export'
+export function pointToSegmentDistance(p, a, b) {
   const l2 = Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
   if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
 

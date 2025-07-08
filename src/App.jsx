@@ -9,6 +9,7 @@ import {
   applyGradientFillToShapes,
   applyEdgeGradientFill,
 } from "./utils/connectivity";
+import { generateAndDownloadGLB } from "./utils/exportTo3D";
 
 function App() {
   const [mode, setMode] = useState("drawing");
@@ -204,6 +205,14 @@ function App() {
       );
     } else {
       alert("Tidak ada gambar untuk diberi gradien.");
+    }
+  };
+
+  const handleConvertTo3D = () => {
+    if (paths.length > 0) {
+      generateAndDownloadGLB(paths);
+    } else {
+      alert("Gambar terlebih dahulu sebelum dikonversi ke 3D.");
     }
   };
 
@@ -530,11 +539,10 @@ function App() {
           alignItems: "center",
           marginTop: "1rem",
           padding: "1rem",
-          scale: "0.9",
-          backgroundColor: "darkred",
+          border: "1px solid #ccc",
+          borderRadius: "8px",
         }}
       >
-        
         <button
           style={{
             ...buttonBaseStyle,
@@ -572,7 +580,6 @@ function App() {
           </span>
         </div>
 
-        
         <div
           style={{
             width: "100%",
@@ -623,6 +630,27 @@ function App() {
             {gradientMax.toFixed(2)}
           </span>
         </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          width: "80%",
+          justifyContent: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <button
+          style={{
+            ...buttonBaseStyle,
+            backgroundColor: "#1abc9c",
+            color: "white",
+            fontWeight: "bold",
+          }}
+          onClick={handleConvertTo3D}
+        >
+          Convert To 3D Model
+        </button>
       </div>
     </div>
   );
