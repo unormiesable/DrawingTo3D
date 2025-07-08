@@ -1,6 +1,6 @@
 const buildGraph = (allStrokes) => {
     const points = [];
-    const tolerance = 15;
+    const tolerance = 1;
 
     const findOrAddPoint = (p) => {
         const existingPointIndex = points.findIndex(
