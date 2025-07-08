@@ -137,6 +137,13 @@ export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
     "position",
     new THREE.Float32BufferAttribute(positions, 3)
   );
+
+  geometry.computeBoundingBox();
+  const boundingBox = geometry.boundingBox;
+  const center = new THREE.Vector3();
+  boundingBox.getCenter(center);
+  geometry.translate(-center.x, -center.y, -center.z);
+
   geometry.computeVertexNormals();
 
   const material = new THREE.MeshStandardMaterial({
