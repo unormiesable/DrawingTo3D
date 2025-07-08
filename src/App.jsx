@@ -390,12 +390,14 @@ function App() {
         </button>
       </div>
 
+      <p>DEBUGER MENU</p>
+
       <div
         style={{
           display: "flex",
           width: "80%",
           justifyContent: "center",
-          marginTop: "1rem",
+          marginTop: "0rem",
         }}
       >
         <button
@@ -420,14 +422,12 @@ function App() {
         </button>
       </div>
 
-      <p>DEBUGER</p>
-
       <div
         style={{
           display: "flex",
           width: "80%",
           justifyContent: "center",
-          marginTop: "0rem",
+          marginTop: "1rem",
         }}
       >
         <button
