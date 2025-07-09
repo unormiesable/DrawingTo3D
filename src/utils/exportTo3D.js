@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { buildGraph } from "./connectivity";
+import { SimplifyModifier } from "three/examples/jsm/modifiers/SimplifyModifier.js";
 
 function downloadFile(data, filename, type) {
   const blob = new Blob([data], { type });
@@ -16,7 +17,13 @@ function downloadFile(data, filename, type) {
   }, 0);
 }
 
-export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
+export async function generateAndDownloadGLB(
+  allStrokes,
+  maxThickness = 15.0,
+  minThickness = 2.0,
+  simplify = false,
+  simplifyRatio = 0.75
+) {
   if (!allStrokes || allStrokes.length === 0) {
     alert("Tidak ada gambar untuk dikonversi.");
     return;
@@ -99,15 +106,38 @@ export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
   const positions = [];
   const indices = [];
   const numOutlinePoints = outlinePoints.length;
-  const halfThickness = thickness / 2.0;
+
+  let maxDistance = 0;
+  for (const p of outlinePoints) {
+    const dist = Math.sqrt(p.x * p.x + p.y * p.y);
+    if (dist > maxDistance) {
+      maxDistance = dist;
+    }
+  }
+
+  // THICCC
+  const thicknessRange = maxThickness - minThickness;
 
   for (let i = 0; i < numOutlinePoints; i++) {
     const p = outlinePoints[i];
-    positions.push(p.x, p.y, halfThickness);
+    const dist = Math.sqrt(p.x * p.x + p.y * p.y);
+
+    const normalizedDistance = maxDistance === 0 ? 0 : dist / maxDistance;
+
+    const currentThickness = minThickness + (thicknessRange * (1 - normalizedDistance));
+    const currentHalfThickness = currentThickness / 2.0;
+
+    positions.push(p.x, p.y, currentHalfThickness);
   }
+
   for (let i = 0; i < numOutlinePoints; i++) {
     const p = outlinePoints[i];
-    positions.push(p.x, p.y, -halfThickness);
+    const dist = Math.sqrt(p.x * p.x + p.y * p.y);
+    const normalizedDistance = maxDistance === 0 ? 0 : dist / maxDistance;
+    const currentThickness = minThickness + (thicknessRange * (1 - normalizedDistance));
+    const currentHalfThickness = currentThickness / 2.0;
+
+    positions.push(p.x, p.y, -currentHalfThickness);
   }
 
   trianglesIndices.forEach((tri) => {
@@ -128,6 +158,7 @@ export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
     const bottom_i = i + numOutlinePoints;
     const top_next_i = next_i;
     const bottom_next_i = next_i + numOutlinePoints;
+
     indices.push(top_i, bottom_i, top_next_i);
     indices.push(bottom_i, bottom_next_i, top_next_i);
   }
@@ -146,6 +177,14 @@ export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
 
   geometry.computeVertexNormals();
 
+  if (simplify) {
+    const modifier = new SimplifyModifier();
+    const numFaces = geometry.index.count / 3;
+    const numFacesToKeep = Math.floor(numFaces * (1 - simplifyRatio));
+    geometry = modifier.modify(geometry, numFacesToKeep);
+    geometry.computeVertexNormals();
+  }
+
   const material = new THREE.MeshStandardMaterial({
     color: 0xcccccc,
     side: THREE.DoubleSide,
@@ -153,6 +192,9 @@ export async function generateAndDownloadGLB(allStrokes, thickness = 15.0) {
     roughness: 0.5,
   });
   const mesh = new THREE.Mesh(geometry, material);
+
+  const scaleFactor = 0.01;
+  mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
   new GLTFExporter().parse(
     mesh,
